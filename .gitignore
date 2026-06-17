@@ -1,0 +1,4 @@
+data/.amfi_navall.txt
+data/mf_funds.json
+__pycache__/
+*.pyc

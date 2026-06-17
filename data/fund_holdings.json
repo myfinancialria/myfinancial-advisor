@@ -1,0 +1,76 @@
+{
+  "illustrative": true,
+  "_README": "ILLUSTRATIVE sample of top fund holdings for the look-through demo. Weights are APPROXIMATE and not current. Replace with real AMC monthly portfolio / factsheet data (and refresh monthly) for accurate stock-level look-through. Match key = fund name fragment.",
+  "as_of": "illustrative",
+  "schemes": {
+    "UTI Nifty 50 Index": {
+      "as_of": "illustrative",
+      "holdings": [
+        {"stock": "HDFC Bank", "weight": 11.5, "sector": "Financials"},
+        {"stock": "Reliance Industries", "weight": 9.0, "sector": "Energy"},
+        {"stock": "ICICI Bank", "weight": 8.0, "sector": "Financials"},
+        {"stock": "Infosys", "weight": 6.0, "sector": "IT"},
+        {"stock": "Larsen & Toubro", "weight": 4.0, "sector": "Industrials"},
+        {"stock": "ITC", "weight": 3.8, "sector": "FMCG"},
+        {"stock": "TCS", "weight": 3.7, "sector": "IT"},
+        {"stock": "Axis Bank", "weight": 3.0, "sector": "Financials"},
+        {"stock": "Bharti Airtel", "weight": 3.0, "sector": "Telecom"},
+        {"stock": "State Bank of India", "weight": 2.8, "sector": "Financials"}
+      ]
+    },
+    "Parag Parikh Flexi Cap": {
+      "as_of": "illustrative",
+      "holdings": [
+        {"stock": "HDFC Bank", "weight": 8.0, "sector": "Financials"},
+        {"stock": "Bajaj Holdings", "weight": 6.5, "sector": "Financials"},
+        {"stock": "Power Grid", "weight": 6.0, "sector": "Utilities"},
+        {"stock": "Coal India", "weight": 5.5, "sector": "Energy"},
+        {"stock": "ITC", "weight": 5.0, "sector": "FMCG"},
+        {"stock": "ICICI Bank", "weight": 4.5, "sector": "Financials"},
+        {"stock": "Alphabet (US)", "weight": 4.0, "sector": "IT (Intl)"},
+        {"stock": "Infosys", "weight": 3.5, "sector": "IT"},
+        {"stock": "Microsoft (US)", "weight": 3.0, "sector": "IT (Intl)"},
+        {"stock": "Maruti Suzuki", "weight": 2.5, "sector": "Auto"}
+      ]
+    },
+    "ICICI Prudential Bluechip": {
+      "as_of": "illustrative",
+      "holdings": [
+        {"stock": "ICICI Bank", "weight": 9.0, "sector": "Financials"},
+        {"stock": "HDFC Bank", "weight": 8.5, "sector": "Financials"},
+        {"stock": "Reliance Industries", "weight": 7.0, "sector": "Energy"},
+        {"stock": "Infosys", "weight": 5.5, "sector": "IT"},
+        {"stock": "Larsen & Toubro", "weight": 5.0, "sector": "Industrials"},
+        {"stock": "Bharti Airtel", "weight": 4.0, "sector": "Telecom"},
+        {"stock": "Axis Bank", "weight": 3.5, "sector": "Financials"},
+        {"stock": "Maruti Suzuki", "weight": 3.0, "sector": "Auto"}
+      ]
+    },
+    "Nippon India Small Cap": {
+      "as_of": "illustrative",
+      "holdings": [
+        {"stock": "HDFC Bank", "weight": 2.5, "sector": "Financials"},
+        {"stock": "Tube Investments", "weight": 2.2, "sector": "Auto"},
+        {"stock": "Multi Commodity Exchange", "weight": 2.0, "sector": "Financials"},
+        {"stock": "Apar Industries", "weight": 1.9, "sector": "Industrials"},
+        {"stock": "Kirloskar Brothers", "weight": 1.8, "sector": "Industrials"},
+        {"stock": "Power Grid", "weight": 1.6, "sector": "Utilities"},
+        {"stock": "Voltamp Transformers", "weight": 1.5, "sector": "Industrials"},
+        {"stock": "ELGI Equipments", "weight": 1.4, "sector": "Industrials"}
+      ]
+    },
+    "HDFC Flexi Cap": {
+      "as_of": "illustrative",
+      "holdings": [
+        {"stock": "ICICI Bank", "weight": 9.5, "sector": "Financials"},
+        {"stock": "HDFC Bank", "weight": 9.0, "sector": "Financials"},
+        {"stock": "Axis Bank", "weight": 6.0, "sector": "Financials"},
+        {"stock": "Cipla", "weight": 4.5, "sector": "Pharma"},
+        {"stock": "HCL Technologies", "weight": 4.0, "sector": "IT"},
+        {"stock": "SBI", "weight": 3.8, "sector": "Financials"},
+        {"stock": "Bharti Airtel", "weight": 3.5, "sector": "Telecom"},
+        {"stock": "Reliance Industries", "weight": 3.0, "sector": "Energy"}
+      ]
+    }
+  }
+}
