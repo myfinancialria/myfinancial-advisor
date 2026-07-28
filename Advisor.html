@@ -147,6 +147,7 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:24px;lin
     <div class="step" data-v="rebal"><div class="n">MANAGE</div><div class="t">Rebalance</div><div class="s">Drift → STP/switch</div></div>
     <div class="step" data-v="swp"><div class="n">MANAGE</div><div class="t">Retirement (SWP)</div><div class="s">Withdrawal plan</div></div>
     <div class="step" data-v="tax"><div class="n">MANAGE</div><div class="t">Tax</div><div class="s">Gains + harvesting</div></div>
+    <div class="step" data-v="allweather"><div class="n">PLEDGE</div><div class="t">All-Weather (F&amp;O)</div><div class="s">Collateral for option sellers</div></div>
   </div>
 
   <!-- STEP 1: RISK PROFILE -->
@@ -337,6 +338,29 @@ Nippon Small Cap, equity, 400, 80, 190, 2020-06-15</textarea>
     <div class="btnrow"><button class="btn gold" onclick="computeGains()">Estimate tax</button></div>
     <div id="gainsOut"></div>
     <div class="disc" style="margin-top:14px">Equity: STCG (≤12m) 20%, LTCG (&gt;12m) 12.5% over ₹1.25L/yr. Debt bought on/after 1 Apr 2023: slab rate. Gold/Intl/Hybrid-35-65: LTCG &gt;24m at 12.5%, else slab. Base rates shown — surcharge &amp; 4% cess extra.</div>
+  </div></section>
+
+  <!-- PLEDGE: ALL-WEATHER COLLATERAL FOR OPTION SELLERS -->
+  <section class="view" id="v-allweather"><div class="panel">
+    <h2>All-Weather Collateral — for Option Sellers<small>Build a pledgeable all-weather ETF portfolio that earns while it funds your F&amp;O margin. Enter amount, risk &amp; tenure → allocation, buy-list, the best pledge plan, cash/non-cash checks, red flags, and drift-rebalancing.</small></h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="fld"><label>Amount to invest (₹)</label><input id="aw_amt" type="number" value="2000000" step="50000" min="100000"></div>
+      <div class="fld"><label>Risk appetite</label><select id="aw_risk"><option value="cons">Conservative</option><option value="mod" selected>Moderate</option><option value="agg">Aggressive</option></select></div>
+      <div class="fld"><label>Tenure (years)</label><input id="aw_ten" type="number" value="5" min="1" max="30"></div>
+    </div>
+    <h3>Live ETF prices — edit to today's LTP</h3>
+    <div id="aw_ltps" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px"></div>
+    <div class="btnrow"><button class="btn gold" onclick="awBuild()">Build portfolio &amp; pledge plan</button></div>
+    <div id="aw_out"></div>
+
+    <div class="panel" style="background:var(--bg);margin-top:18px">
+      <h3 style="margin-top:0">Drift check &amp; re-balance</h3>
+      <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Enter the <b>current value (₹)</b> of each holding to see how far it has drifted from target and the exact units to buy/sell to snap it back.</p>
+      <div id="aw_drift_in" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px"></div>
+      <div class="btnrow"><button class="btn" onclick="awDrift()">Check drift &amp; rebalance</button></div>
+      <div id="aw_drift_out"></div>
+    </div>
+    <div class="disc">Educational only; not investment advice; not from a SEBI-registered adviser. Historical CAGR/vol/drawdown are 20.2-yr backtests (2006-2026). Pledging leverages a portfolio that itself draws down — deploy ≤60% of usable margin and keep a buffer. Haircuts and the 50:50 cash:non-cash rule are indicative and broker-dependent. LTPs default to 28-Jul-2026 — edit them to today's price.</div>
   </div></section>
 
   <footer>
@@ -1139,9 +1163,126 @@ function computeGains(){const tc=$('tx_class').value,buy=+$('tx_buy').value,sell
     <div class="stat"><div class="k">Estimated tax</div><div class="v big">${cr(r.total_tax)}</div><div class="sub">base, ex surcharge/cess</div></div></div>`;
 }
 
+/* ================= All-Weather Collateral for Option Sellers ================= */
+/* Instruments (LTP as of 28-Jul-2026; 20.2-yr backtest 2006-2026). US ETF is NOT
+   broker-pledgeable (haircut null). LIQUIDBEES is the cash-equivalent sleeve. */
+const AW_INST=[
+ {k:'IN',    etf:'NIFTYBEES', name:'Indian equity',  ltp:273.00, cagr:11.94, dd:-60.4, hair:0.15, cash:false, pledge:true },
+ {k:'US',    etf:'MON100',    name:'US / Nasdaq-100', ltp:322.11, cagr:14.93, dd:-38.9, hair:null, cash:false, pledge:false},
+ {k:'GOLD',  etf:'GOLDBEES',  name:'Gold',           ltp:118.68, cagr:13.18, dd:-26.5, hair:0.15, cash:false, pledge:true },
+ {k:'SILVER',etf:'SILVERBEES',name:'Silver',         ltp:213.31, cagr:10.93, dd:-57.9, hair:0.20, cash:false, pledge:true },
+ {k:'DEBT',  etf:'LIQUIDBEES',name:'Debt / liquid',  ltp:1000.00,cagr:7.23,  dd:0.0,   hair:0.10, cash:true,  pledge:true },
+];
+const awRs=v=>'₹'+Math.round(v).toLocaleString('en-IN');
+const awL =v=>'₹'+(v/1e5).toFixed(2)+'L';
+const awPc=v=>v.toFixed(1)+'%';
+let AW_STATE={targets:null};
+
+function awLtp(i){ return +($('aw_ltp_'+AW_INST[i].k)||{}).value || AW_INST[i].ltp; }
+
+function awTargets(){
+  const risk=$('aw_risk').value, ten=+$('aw_ten').value||5;
+  let g = risk==='cons'?45 : risk==='agg'?75 : 60;      // growth bucket % (equity+gold+silver)
+  g += ten<3 ? -15 : ten>7 ? 12 : 0;                     // shorter tenure → safer; longer → more growth
+  g = Math.max(30, Math.min(80, g));
+  // split growth bucket; tilt to pledgeable sleeves (IN, Gold) over US
+  return [ +(g*0.38).toFixed(1), +(g*0.20).toFixed(1), +(g*0.30).toFixed(1), +(g*0.12).toFixed(1), +(100-g).toFixed(1) ];
+}
+
+function awInit(){
+  $('aw_ltps').innerHTML = AW_INST.map(s=>
+    `<div class="fld"><label>${s.etf}</label><input id="aw_ltp_${s.k}" type="number" step="0.01" value="${s.ltp}"></div>`).join('');
+  $('aw_drift_in').innerHTML = AW_INST.map(s=>
+    `<div class="fld"><label>${s.etf} now ₹</label><input id="aw_cur_${s.k}" type="number" step="1000" value="0"></div>`).join('');
+}
+
+function awBuild(){
+  const amt=+$('aw_amt').value||0;
+  const t=awTargets(); AW_STATE.targets=t;
+  let rows='', dep=0, vals=[0,0,0,0,0], blendCagr=0, blendDD=0;
+  AW_INST.forEach((s,i)=>{
+    const alloc=amt*t[i]/100, ltp=awLtp(i), units=Math.floor(alloc/ltp), d=units*ltp;
+    dep+=d; vals[i]=d; blendCagr+=t[i]/100*s.cagr; blendDD+=t[i]/100*s.dd;
+    const pl = s.pledge ? (s.cash?'cash-equiv':'non-cash') : '<span style="color:var(--red)">not pledgeable</span>';
+    rows+=`<tr><td style="text-align:left"><b>${s.etf}</b><div style="font-size:11px;color:var(--muted)">${s.name}</div></td>`
+      +`<td>${awPc(t[i])}</td><td>${awRs(alloc)}</td><td>${ltp.toLocaleString('en-IN')}</td><td><b>${units.toLocaleString('en-IN')}</b></td>`
+      +`<td>${awRs(d)}</td><td>${s.cagr}%</td><td>${pl}</td></tr>`;
+  });
+  // pledge / margin
+  let cashC=0, nonC=0;
+  AW_INST.forEach((s,i)=>{ if(!s.pledge) return; const c=vals[i]*(1-s.hair); if(s.cash) cashC+=c; else nonC+=c; });
+  const usable=cashC+Math.min(cashC,nonC), deployMax=usable*0.6;
+  // red flags
+  const F=[];
+  if(nonC>cashC+1) F.push(['red',`Non-cash collateral (${awL(nonC)}) exceeds cash-equivalent (${awL(cashC)}). Under the 50:50 rule only ${awL(cashC)} of your non-cash pledge counts — ${awL(nonC-cashC)} gives <b>zero usable margin</b>. Raise LIQUIDBEES (debt) or trim equity/gold/silver.`]);
+  const usW=t[1]; if(usW>0) F.push(['amber',`US sleeve (MON100, ${awPc(usW)}) is <b>not broker-pledgeable</b> — it's held for return &amp; diversification but adds ₹0 to margin. For pure margin efficiency, move it to Gold/Nifty.`]);
+  if(t[4]<20) F.push(['red',`Debt/liquid is only ${awPc(t[4])} — a thin cash cushion for a leveraged option-selling book. A collateral drawdown can trigger a margin call. Keep debt ≥ 25-30% when you pledge.`]);
+  if(t[3]>12) F.push(['amber',`Silver is ${awPc(t[3])} — it's the highest-volatility sleeve (31% vol, −58% max DD). Cap it near 10-12% so a silver crash doesn't gut your collateral.`]);
+  AW_INST.forEach((s,i)=>{ if(i<4 && t[i]>40) F.push(['amber',`${s.etf} is ${awPc(t[i])} — over-concentrated in one sleeve; a single-asset drawdown hits your whole pledge.`]); });
+  const flagsHtml = F.length ? F.map(([lv,m])=>{
+    const bg=lv==='red'?'var(--red-bg)':'#fff7e6', bd=lv==='red'?'var(--red)':'var(--gold)', ic=lv==='red'?'⛔':'⚠️';
+    return `<div style="background:${bg};border-left:4px solid ${bd};border-radius:8px;padding:10px 13px;margin:8px 0;font-size:13px">${ic} ${m}</div>`;
+  }).join('') : `<div style="background:var(--green-bg);border-left:4px solid var(--green);border-radius:8px;padding:10px 13px;font-size:13px">✅ Allocation is well-balanced for pledging — cash covers non-cash, no over-concentration, healthy debt cushion.</div>`;
+
+  const card=(k,v,s)=>`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow)"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">${k}</div><div style="font-size:21px;font-weight:800;color:var(--navy);margin-top:3px">${v}</div><div style="font-size:11px;color:var(--muted)">${s}</div></div>`;
+
+  $('aw_out').innerHTML =
+    `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0">
+       ${card('Blended CAGR', awPc(blendCagr), 'weighted, 20-yr hist.')}
+       ${card('Deployed', awRs(dep), awRs(amt-dep)+' cash left')}
+       ${card('Usable F&amp;O margin', awL(usable), '50:50 rule')}
+       ${card('Safe deploy (≤60%)', awL(deployMax), 'keep the rest as buffer')}
+     </div>
+     <h3>Buy-list — what to buy &amp; how much</h3>
+     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px">
+       <thead><tr style="background:var(--navy);color:#fff">
+         <th style="text-align:left;padding:9px 11px">Instrument</th><th style="padding:9px 11px">Target %</th><th style="padding:9px 11px">Allocate ₹</th><th style="padding:9px 11px">LTP ₹</th><th style="padding:9px 11px">Units</th><th style="padding:9px 11px">Deploy ₹</th><th style="padding:9px 11px">CAGR</th><th style="padding:9px 11px">Pledge</th></tr></thead>
+       <tbody>${rows.replace(/<td>/g,'<td style="padding:9px 11px;text-align:center;border-bottom:1px solid var(--line)">').replace(/<td style="text-align:left">/g,'<td style="padding:9px 11px;text-align:left;border-bottom:1px solid var(--line)">')}</tbody></table></div>
+     <h3>How to pledge for maximum benefit</h3>
+     <div style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7">
+       <b>Cash-equivalent collateral</b> (LIQUIDBEES, 10% haircut): <b>${awL(cashC)}</b><br>
+       <b>Non-cash collateral</b> (Nifty/Gold/Silver, after haircut): <b>${awL(nonC)}</b> &nbsp;<span style="color:var(--muted)">(US ETF excluded — not pledgeable)</span><br>
+       <b>50:50 rule</b> → non-cash counts only up to your cash: usable = cash ${awL(cashC)} + min(cash, non-cash) ${awL(Math.min(cashC,nonC))} = <b>${awL(usable)}</b><br>
+       ➜ Pledge <b>all five ETFs</b> (US only if your broker accepts it), sell CE/PE against the margin, and <b>deploy ≤ ${awL(deployMax)}</b> — the ~40% buffer absorbs a collateral drawdown so you're not force-squared-off in a crash.
+     </div>
+     <h3>Red flags</h3>${flagsHtml}`;
+
+  // prefill drift inputs with the freshly-built values
+  AW_INST.forEach((s,i)=>{ const el=$('aw_cur_'+s.k); if(el) el.value=Math.round(vals[i]); });
+}
+
+function awDrift(){
+  const t = AW_STATE.targets || awTargets();
+  const cur = AW_INST.map(s=> +($('aw_cur_'+s.k)||{}).value || 0);
+  const total = cur.reduce((a,b)=>a+b,0);
+  if(total<=0){ $('aw_drift_out').innerHTML=`<div class="disc">Enter current values above (or click “Build” first to prefill), then check drift.</div>`; return; }
+  let rows='', trades=0, maxDrift=0;
+  AW_INST.forEach((s,i)=>{
+    const cw=cur[i]/total*100, dw=cw-t[i], tgtRs=total*t[i]/100, delta=tgtRs-cur[i];
+    const ltp=awLtp(i), units=Math.round(Math.abs(delta)/ltp);
+    const act = Math.abs(dw)<0.5 ? '—' : (delta>0?`BUY ${units.toLocaleString('en-IN')}`:`SELL ${units.toLocaleString('en-IN')}`);
+    const flag = Math.abs(dw)>5;  maxDrift=Math.max(maxDrift,Math.abs(dw)); if(flag) trades++;
+    const col = flag ? (dw>0?'var(--red)':'var(--blue)') : 'var(--muted)';
+    rows+=`<tr><td style="padding:8px 11px;text-align:left;border-bottom:1px solid var(--line)"><b>${s.etf}</b></td>`
+      +`<td style="padding:8px 11px;text-align:center;border-bottom:1px solid var(--line)">${awPc(t[i])}</td>`
+      +`<td style="padding:8px 11px;text-align:center;border-bottom:1px solid var(--line)">${awPc(cw)}</td>`
+      +`<td style="padding:8px 11px;text-align:center;border-bottom:1px solid var(--line);color:${col};font-weight:700">${dw>=0?'+':''}${dw.toFixed(1)}%${flag?' ⚑':''}</td>`
+      +`<td style="padding:8px 11px;text-align:right;border-bottom:1px solid var(--line)">${awRs(delta)}</td>`
+      +`<td style="padding:8px 11px;text-align:center;border-bottom:1px solid var(--line);font-weight:700">${act}</td></tr>`;
+  });
+  const banner = trades===0
+    ? `<div style="background:var(--green-bg);border-left:4px solid var(--green);border-radius:8px;padding:11px 14px;font-size:13px">✅ In balance — every sleeve is within 5% of target (max drift ${maxDrift.toFixed(1)}%). No action needed.</div>`
+    : `<div style="background:var(--red-bg);border-left:4px solid var(--red);border-radius:8px;padding:11px 14px;font-size:13px">⚑ <b>${trades} sleeve(s) drifted &gt;5%</b> (max ${maxDrift.toFixed(1)}%). Rebalance with the buy/sell below to snap back to target — sell the over-weights, buy the under-weights (a wash on your total, so no fresh cash needed). Re-pledge any new units.</div>`;
+  $('aw_drift_out').innerHTML = banner +
+    `<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:560px">
+       <thead><tr style="background:var(--navy);color:#fff">
+        <th style="padding:8px 11px;text-align:left">ETF</th><th style="padding:8px 11px">Target</th><th style="padding:8px 11px">Current</th><th style="padding:8px 11px">Drift</th><th style="padding:8px 11px">Adjust ₹</th><th style="padding:8px 11px">Action (units)</th></tr></thead>
+       <tbody>${rows}</tbody></table></div>`;
+}
+
 /* ---------- boot ---------- */
 $('navdate').textContent=FUNDS.nav_date||FUNDS.generated||"—";
-renderQ(); initCats(); renderScreen();
+renderQ(); initCats(); renderScreen(); awInit();
 $('casFile').addEventListener('change',e=>{ if(e.target.files[0]) handleCasFile(e.target.files[0]); });
 </script>
 </body>

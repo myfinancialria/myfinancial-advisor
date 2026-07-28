@@ -12,6 +12,7 @@ self-contained web app; fund NAVs refresh automatically every weekday.
 - Whole-market Direct-Growth fund screener with per-category ranking
 - Recommended portfolio with **expected return, volatility, and stock look-through**
 - Portfolio (CAS) analysis: returns, beta/alpha, overlap, drift, unit-level rebalancing
+- **All-Weather collateral (F&O / option sellers):** amount + risk + tenure → pledgeable ETF allocation, buy-list, cash/non-cash margin plan, red flags & drift-rebalancing
 - Tax planning (FY2025-26) + retirement SWP
 
 > ⚠️ Educational / advisory-support tool. Mutual funds are subject to market risk.
